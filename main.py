@@ -1,5 +1,6 @@
 from MopidyClient import MopidyClient
 from InternetManager import InternetManager
+from AudioManager import AudioManager
 from SerialInterface import SerialInterface
 import threading
 import time
@@ -13,6 +14,7 @@ class MainApp:
 
     mpdClient = MopidyClient()
     inetMgr = InternetManager()
+    audioMgr = AudioManager()
     serialIf = SerialInterface()
 
     def __init__(self):
@@ -46,7 +48,9 @@ class MainApp:
             self.handleCriticalError(e)
 
     def handleSerialMessage(self, msg):
-        print(str(msg))
+        #print(str(msg))
+        if "Volume" in msg:
+            self.audioMgr.setAudioVolume(msg["Volume"])
         pass
 
     def handleShutdownRequest(self, signal, frame):
