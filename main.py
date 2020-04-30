@@ -22,6 +22,8 @@ class MainApp:
         signal.signal(signal.SIGINT, self.handleShutdownRequest)
         signal.signal(signal.SIGTERM, self.handleShutdownRequest)
 
+        self.serialIf.onMessageReceived = self.handleSerialMessage
+
         self.inetMgr.start()
         self.mpdClient.start()
         self.serialIf.start()
@@ -33,6 +35,9 @@ class MainApp:
         self.serialIf.stop()
         self.mpdClient.stop()
         self.inetMgr.stop()
+
+    def handleSerialMessage(self, msg):
+        print(str(msg))
 
     def handleShutdownRequest(self, signal, frame):
         with self.shutdownCv:
