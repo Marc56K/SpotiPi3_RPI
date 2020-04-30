@@ -30,14 +30,24 @@ class MainApp:
 
         with self.shutdownCv:
             while not self.shutdownRequested:
-                self.shutdownCv.wait()
+                self.shutdownCv.wait(0.5)
+                self.sendState()
         
         self.serialIf.stop()
         self.mpdClient.stop()
         self.inetMgr.stop()
 
+    def sendState(self):
+        try:
+            dict = {}
+            dict["online"] = self.inetMgr.isConnected()
+            self.serialIf.write(dict)
+        except Exception as e:
+            self.handleCriticalError(e)
+
     def handleSerialMessage(self, msg):
         print(str(msg))
+        pass
 
     def handleShutdownRequest(self, signal, frame):
         with self.shutdownCv:

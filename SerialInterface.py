@@ -20,8 +20,7 @@ class SerialInterface(UpdateThread):
         self.onMessageReceived = None   
         self.setSleepDuration(0.01)
         self._readStarted = False
-        self._readHeaderBuffer = []
-        self._readDataBuffer = []
+        self._readBuffer = []
         self._readDataSize = -1
 
     def startup(self):
@@ -33,28 +32,40 @@ class SerialInterface(UpdateThread):
             bytesize = serial.EIGHTBITS,
             timeout = 1)
 
+    def write(self, dict):
+        with self.callbackCv:
+            msg = json.dumps(dict)
+            encodedData = base64.b64encode(msg.encode("utf-8"))
+            encodedDataSize = int(len(encodedData)).to_bytes(4, byteorder="little", signed=True)
+            encodedHeader = base64.b64encode(encodedDataSize)
+
+            self._serial.write(struct.pack("B", self.STX))
+            self._serial.write(encodedHeader)
+            self._serial.write(encodedData)            
+            self._serial.write(struct.pack("B", self.ETX))
+
     def update(self):        
         while self._serial.inWaiting() > 0 and not self.shutdownRequested():
             rawByte = self._serial.read()
             b = struct.unpack("B", rawByte)[0]
             if b == self.STX or b == self.ETX:
-                self._readStarted = b == self.STX                
-                self._readHeaderBuffer = []
-                self._readDataBuffer = [] 
+                self._readStarted = b == self.STX
+                self._readBuffer = []
                 self._readDataSize = -1
             elif self._readStarted:
                 if self._readDataSize < 0:
-                    self._readHeaderBuffer.append(b)
-                    if len(self._readHeaderBuffer) == 8:
-                        encodedBytes = bytearray(self._readHeaderBuffer)
+                    self._readBuffer.append(b)
+                    if len(self._readBuffer) == 8:
+                        encodedBytes = bytearray(self._readBuffer)
                         decodedBytes = base64.b64decode(encodedBytes)
-                        self._readDataSize = int.from_bytes(decodedBytes, byteorder='little', signed=False)
-                        print(str(self._readDataSize))
+                        self._readDataSize = int.from_bytes(decodedBytes, byteorder='little', signed=True)
+                        #print(str(self._readDataSize))
+                        self._readBuffer = []
                 else:
-                    if len(self._readDataBuffer) < self._readDataSize:
-                        self._readDataBuffer.append(b)
-                    if len(self._readDataBuffer) == self._readDataSize:
-                        encodedBytes = bytearray(self._readDataBuffer)
+                    if len(self._readBuffer) < self._readDataSize:
+                        self._readBuffer.append(b)
+                    if len(self._readBuffer) == self._readDataSize:
+                        encodedBytes = bytearray(self._readBuffer)
                         decodedBytes = base64.b64decode(encodedBytes)
                         msg = json.loads(decodedBytes)
                         self.eventMessageReceived(msg)
