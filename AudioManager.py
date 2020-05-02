@@ -4,6 +4,7 @@ import queue
 import os
 import logging
 import json
+import math
 
 class AudioManager:
 
@@ -22,9 +23,11 @@ class AudioManager:
     def setAudioVolume(self, vol):
         try:
             for m in self.getMixer():
-                newVol = max(self._minVolume, min(self._maxVolume, vol))
-                #print ("volume: {0}".format(newVol))
-                m.setvolume(newVol)
+                newVol = 0
+                if vol > 0:
+                    newVol = 19.87266007 * math.log(vol) + 7.893804667
+                newVol = max(self._minVolume, min(self._maxVolume, round(newVol)))
+                m.setvolume(int(newVol))
         except Exception as e:
             logging.error(str(e))
 
