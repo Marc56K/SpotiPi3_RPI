@@ -28,14 +28,16 @@ class MainApp:
 
         self.inetMgr.start()
         self.mpdClient.start()
+        self.audioMgr.start()
         self.serialIf.start()
 
         with self.shutdownCv:
             while not self.shutdownRequested:
                 self.shutdownCv.wait(0.5)
                 self.sendState()
-        
+
         self.serialIf.stop()
+        self.audioMgr.stop()
         self.mpdClient.stop()
         self.inetMgr.stop()
 
@@ -49,9 +51,20 @@ class MainApp:
 
     def handleSerialMessage(self, msg):
         #print(str(msg))
-        if "Volume" in msg:
-            self.audioMgr.setAudioVolume(msg["Volume"])
-        pass
+        if "volume" in msg:
+            self.audioMgr.setAudioVolume(msg["volume"])
+        if "togglePlayPause" in msg and msg["togglePlayPause"] != 0:
+            self.mpdClient.togglePlayPause()
+        if "skipTracks" in msg:
+            skipTracks = msg["skipTracks"]
+            if skipTracks > 0:
+                for s in range(skipTracks):
+                    self.mpdClient.skipToNextTrack()
+            elif skipTracks < 0:
+                for s in range(-skipTracks):
+                    self.mpdClient.skipToPreviousTrack()
+        if "playlist" in msg:
+            self.mpdClient.setPlaylist(msg["playlist"])
 
     def handleShutdownRequest(self, signal, frame):
         with self.shutdownCv:

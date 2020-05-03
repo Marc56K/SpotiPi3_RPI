@@ -8,6 +8,8 @@ import threading
 
 class MopidyClient(UpdateThread):
 
+    _playlistLock = threading.RLock()
+    _requestedPlaylistId = ""
     _currentPlaylistId = ""
     _client = None
 
@@ -15,7 +17,7 @@ class MopidyClient(UpdateThread):
         UpdateThread.__init__(self, "MOPIDY_CLIENT-Thread")
 
         self._state = { 'playlistId': '', 'songIdx': 0, 'songTime': 0 }
-        self.loadState()
+        #self.loadState()
         self.resetClient()
 
     def start(self):
@@ -45,12 +47,12 @@ class MopidyClient(UpdateThread):
     def resetClient(self):
         self.cleanup()
         self._client = MPDClient()
-        self._client.timeout = 2
+        self._client.timeout = 20
         self._client.idletimeout = None
     
     def connect(self, timeout):
         start = time.time()
-        while not self._shutdown:
+        while not self.shutdownRequested():
             try:
                 self._client.connect("localhost", 6600)
                 break
@@ -75,6 +77,34 @@ class MopidyClient(UpdateThread):
         
         self.updateConnection()
 
+        newPlaylistId = ""
+        with self._playlistLock:
+            if self._requestedPlaylistId != self._currentPlaylistId:
+                self._currentPlaylistId = self._requestedPlaylistId
+                newPlaylistId = self._currentPlaylistId
+
+        if newPlaylistId != "":
+            for i in range(2):
+                try:
+                    self.updateConnection()
+                    self._client.clear()
+                    
+                    if self._currentPlaylistId == "":
+                        self._client.stop()
+                    else:
+                        playlists = self._client.listplaylists()
+                        print(str(playlists))
+                        selectedPlaylist = next((p for p in playlists if p["playlist"].find(self._currentPlaylistId) > -1), None)
+                        if selectedPlaylist != None:
+                            self._client.load(selectedPlaylist["playlist"])
+                            self._client.play(0)
+                        else:
+                            self._client.stop()
+                    break
+                except Exception as e:
+                    if i == 0:
+                        logging.error(str(e))
+
         try:
             status = self._client.status()
             #print (str(status))
@@ -87,7 +117,7 @@ class MopidyClient(UpdateThread):
                     self._state['playlistId'] = ''
                     self._state['songIdx'] = 0
                     self._state['songTime'] = 0
-                self.saveState()
+                #self.saveState()
             elif not 'song' in status:
                 self._client.stop()
 
@@ -106,47 +136,27 @@ class MopidyClient(UpdateThread):
             except Exception as e:
                 logging.warning(str(e))
 
+
     def setPlaylist(self, id: str) -> bool:
-        with self.cv:
-            for i in range(2):
-                try:
-                    self.updateConnection()
-                    self._client.clear()
-                    self._currentPlaylistId = ""
-                    if id == "":
-                        self._client.stop()
-                        return True
-                    else:
-                        playlists = self._client.listplaylists()
-                        selectedPlaylist = next((p for p in playlists if p["playlist"].find(id) > -1), None)
-                        if selectedPlaylist != None:
-                            logging.debug(selectedPlaylist["playlist"])
-                            self._client.load(selectedPlaylist["playlist"])
-                            self._currentPlaylistId = id
-                            if self._state['playlistId'] != self._currentPlaylistId:
-                                self._client.play(0)
-                            else:
-                                try:
-                                    self._client.play(self._state['songIdx'])
-                                    time.sleep(0.1) #hack
-                                    self._client.seek(self._state['songIdx'], str(self._state['songTime']))
-                                except Exception as e:
-                                    logging.warning(str(e))
-                                    self._client.play(0)
-                            time.sleep(2) #hack
-                            return True
-                        self._client.stop()
-                        return False
-                except Exception as e:
-                    if i == 0:
-                        logging.error(str(e))
-                    else:
-                        raise e
-        return False
+        with self._playlistLock:
+            if self._currentPlaylistId == id:
+                return
+            self._requestedPlaylistId = id
 
     def isStopped(self):
         try:
             return self._client.status()['state'] == 'stop'
+        except Exception as e:
+            logging.warning(str(e))
+        return True 
+
+    def togglePlayPause(self):
+        try:
+            state = self._client.status()['state']
+            if state == 'play':
+                self._client.pause(1)
+            if state == 'pause':
+                self._client.pause(0)
         except Exception as e:
             logging.warning(str(e))
         return True 
@@ -177,29 +187,6 @@ class MopidyClient(UpdateThread):
                 elif currentTrack == 0:
                     self._client.play(0)
             return currentTrack > 0 and not self.isStopped()
-        except Exception as e:
-            logging.error(str(e))
-        return False
-
-    def seek(self, deltaInSeconds):
-        try:
-            with self.cv:
-                if self.isStopped():
-                    return False
-                self.updateConnection()
-                if deltaInSeconds > 0:
-                    status = self._client.status()
-                    if "nextsong" not in status:
-                        currentTrack = int(status.get("song", "-1"))
-                        if currentTrack > -1:
-                            currentTrackTime = int(round(float(status['elapsed'])))
-                            currentTrackDuration = int(self._client.playlistinfo()[currentTrack]['time'])
-                            if currentTrackTime + deltaInSeconds >= currentTrackDuration - 1:
-                                return False
-                    self._client.seekcur("+" + str(deltaInSeconds))
-                else:
-                    self._client.seekcur(str(deltaInSeconds))
-            return not self.isStopped()
         except Exception as e:
             logging.error(str(e))
         return False

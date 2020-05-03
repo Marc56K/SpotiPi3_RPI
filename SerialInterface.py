@@ -46,7 +46,7 @@ class SerialInterface(UpdateThread):
 
     def update(self):
         while self._serial.inWaiting() > 0 and not self.shutdownRequested():
-            numBytes = self._serial.inWaiting()
+            numBytes = min(self._serial.inWaiting(), 128)
             rawBytes = self._serial.read(numBytes)
             for i in range(numBytes):
                 b = struct.unpack_from("B", rawBytes, i)[0]
@@ -69,7 +69,9 @@ class SerialInterface(UpdateThread):
                         if len(self._readBuffer) == self._readDataSize:
                             encodedBytes = bytearray(self._readBuffer)
                             decodedBytes = base64.b64decode(encodedBytes)
+                            #print(str(decodedBytes))
                             msg = json.loads(decodedBytes)
+                            self._readStarted = False
                             self.eventMessageReceived(msg)
 
     def eventMessageReceived(self, msg):
