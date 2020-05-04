@@ -2,6 +2,7 @@ from MopidyClient import MopidyClient
 from InternetManager import InternetManager
 from AudioManager import AudioManager
 from SerialInterface import SerialInterface
+from subprocess import call
 import threading
 import time
 import signal
@@ -58,6 +59,8 @@ class MainApp:
                         self.mpdClient.skipToNextTrack(v)
                     elif k == "skipToStart":
                         self.mpdClient.skipToStart()
+                    elif k == "shutdown":
+                        call("sudo shutdown 0", shell=True)
         except Exception as e:
             print(str(e))
 
@@ -68,7 +71,6 @@ class MainApp:
                 dict["online"] = self.inetMgr.isConnected()
                 dict.update(self.mpdClient.getStatus())
                 self.serialIf.write(dict)
-                print(str(time.time()))
             except Exception as e:
                 print(str(e))
 

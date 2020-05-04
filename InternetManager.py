@@ -8,10 +8,10 @@ class InternetManager(UpdateThread):
 
     def __init__(self):
         UpdateThread.__init__(self, "INTERNET-Thread")
-        self.setSleepDuration(2)
-        self.update()
+        self.setSleepDuration(0)
 
     def update(self):
+        self.setSleepDuration(2)
         try:
             with urllib.request.urlopen('https://google.com/'):
                 self._connected = True            
