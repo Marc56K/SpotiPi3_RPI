@@ -6,92 +6,81 @@ import threading
 import time
 import signal
 import logging
+import os
 
 class MainApp:
-    criticalError = 0
     shutdownRequested = False
-    shutdownCv = threading.Condition()
+    lastStateUpdate = 0
 
-    mpdClient = MopidyClient()
     inetMgr = InternetManager()
     audioMgr = AudioManager()
+    mpdClient = MopidyClient()
     serialIf = SerialInterface()
 
     def __init__(self):
         pass
 
+    def handleShutdownRequest(self, signal, frame):
+        self.shutdownRequested = True
+
     def run(self):
         signal.signal(signal.SIGINT, self.handleShutdownRequest)
         signal.signal(signal.SIGTERM, self.handleShutdownRequest)
 
-        self.serialIf.onMessageReceived = self.handleSerialMessage
-
         self.inetMgr.start()
-        self.mpdClient.start()
         self.audioMgr.start()
-        self.serialIf.start()
 
-        with self.shutdownCv:
-            while not self.shutdownRequested:
-                self.shutdownCv.wait(0.5)
-                self.sendState()
+        while not self.shutdownRequested:      
+            start = time.time()      
+            self.loop()
+            end = time.time()
+            delta = end - start 
+            time.sleep(max(0, 0.3 - delta))
 
-        self.serialIf.stop()
         self.audioMgr.stop()
-        self.mpdClient.stop()
         self.inetMgr.stop()
 
-    def sendState(self):
+    def loop(self):
         try:
-            dict = {}
-            dict["online"] = self.inetMgr.isConnected()
-            self.serialIf.write(dict)
+            messages = self.serialIf.read()
+            for msg in messages:
+                print(str(msg))
+                for (k, v) in msg.items():
+                    if k == "volume":
+                        self.audioMgr.setAudioVolume(v)
+                    elif k == "playlist":
+                        self.mpdClient.loadPlaylist(v)
+                    elif k == "togglePlayPause":
+                        self.mpdClient.togglePlayPause()
+                    elif k == "skipPrevious":
+                        self.mpdClient.skipToPreviousTrack(v)
+                    elif k == "skipNext":
+                        self.mpdClient.skipToNextTrack(v)
+                    elif k == "skipToStart":
+                        self.mpdClient.skipToStart()
         except Exception as e:
-            self.handleCriticalError(e)
+            print(str(e))
 
-    def handleSerialMessage(self, msg):
-        #print(str(msg))
-        if "volume" in msg:
-            self.audioMgr.setAudioVolume(msg["volume"])
-        if "togglePlayPause" in msg and msg["togglePlayPause"] != 0:
-            self.mpdClient.togglePlayPause()
-        if "skipTracks" in msg:
-            skipTracks = msg["skipTracks"]
-            if skipTracks > 0:
-                for s in range(skipTracks):
-                    self.mpdClient.skipToNextTrack()
-            elif skipTracks < 0:
-                for s in range(-skipTracks):
-                    self.mpdClient.skipToPreviousTrack()
-        if "playlist" in msg:
-            self.mpdClient.setPlaylist(msg["playlist"])
+        if time.time() - self.lastStateUpdate > 0.9:
+            self.lastStateUpdate = time.time()
+            try:
+                dict = {}
+                dict["online"] = self.inetMgr.isConnected()
+                dict.update(self.mpdClient.getStatus())
+                self.serialIf.write(dict)
+                print(str(time.time()))
+            except Exception as e:
+                print(str(e))
 
-    def handleShutdownRequest(self, signal, frame):
-        with self.shutdownCv:
-            self.shutdownRequested = True
-            self.shutdownCv.notify_all()
-
-    def handleCriticalError(self, error):
-        logging.critical(error)
-        self.criticalError = time.time()
+        self.mpdClient.disconnect()
 
 if __name__ == '__main__':
-
     try:
-        logging.basicConfig(level=logging.INFO)
-        #fh = logging.FileHandler('log.log')
-        #fh.setLevel(logging.DEBUG)
-        #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        #fh.setFormatter(formatter)
-        #logging.getLogger().addHandler(fh)
-        #logging.getLogger("mpd.base").addHandler(fh)
-
+        os.nice(19)
+        time.sleep(5)
         MainApp().run()        
     except Exception as e:
-        logging.error(str(e))
+        print(str(e))
         exit(1)
-    finally:
-        #GPIO.cleanup()
-        pass
 
     exit(0)

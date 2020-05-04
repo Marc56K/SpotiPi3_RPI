@@ -9,6 +9,7 @@ class InternetManager(UpdateThread):
     def __init__(self):
         UpdateThread.__init__(self, "INTERNET-Thread")
         self.setSleepDuration(2)
+        self.update()
 
     def update(self):
         try:

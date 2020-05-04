@@ -16,7 +16,7 @@ class AudioManager(UpdateThread):
 
     def __init__(self):
         UpdateThread.__init__(self, "AUDIO-Thread")
-        self.setSleepDuration(0.5)
+        self.setSleepDuration(1)
         self._soundsDir = os.path.dirname(__file__) + "/sounds/"
         self._cardIdx = audio.cards().index('wm8960soundcard')
         gpio.setmode(gpio.BCM)
@@ -31,6 +31,9 @@ class AudioManager(UpdateThread):
             self.getHeadphoneMixer().setvolume(self._volume)
         except Exception as e:
             logging.error(str(e))
+    
+    def cleanup(self):
+        gpio.cleanup()
 
     def headphoneDetected(self):
         return not gpio.input(4)

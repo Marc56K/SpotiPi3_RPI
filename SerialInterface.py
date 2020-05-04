@@ -8,22 +8,15 @@ import serial
 import struct
 import base64
 
-class SerialInterface(UpdateThread):
+class SerialInterface:
 
     STX = int(2) # ASCII: Start of Text
     ETX = int(3) # ASCII: End of Text
 
-    callbackCv = threading.Condition()
-
     def __init__(self):
-        UpdateThread.__init__(self, "SERIAL_INTERFACE-Thread")
-        self.onMessageReceived = None   
-        self.setSleepDuration(0.01)
         self._readStarted = False
         self._readBuffer = []
         self._readDataSize = -1
-
-    def startup(self):
         self._serial = serial.Serial(
             port = '/dev/serial0',
             baudrate = 115200,
@@ -33,19 +26,19 @@ class SerialInterface(UpdateThread):
             timeout = 1)
 
     def write(self, dict):
-        with self.callbackCv:
-            msg = json.dumps(dict)
-            encodedData = base64.b64encode(msg.encode("utf-8"))
-            encodedDataSize = int(len(encodedData)).to_bytes(4, byteorder="little", signed=True)
-            encodedHeader = base64.b64encode(encodedDataSize)
+        msg = json.dumps(dict)
+        encodedData = base64.b64encode(msg.encode("utf-8"))
+        encodedDataSize = int(len(encodedData)).to_bytes(4, byteorder="little", signed=True)
+        encodedHeader = base64.b64encode(encodedDataSize)
 
-            self._serial.write(struct.pack("B", self.STX))
-            self._serial.write(encodedHeader)
-            self._serial.write(encodedData)            
-            self._serial.write(struct.pack("B", self.ETX))
+        self._serial.write(struct.pack("B", self.STX))
+        self._serial.write(encodedHeader)
+        self._serial.write(encodedData)            
+        self._serial.write(struct.pack("B", self.ETX))
 
-    def update(self):
-        while self._serial.inWaiting() > 0 and not self.shutdownRequested():
+    def read(self) -> []:
+        result = []
+        while self._serial.inWaiting() > 0:
             numBytes = min(self._serial.inWaiting(), 128)
             rawBytes = self._serial.read(numBytes)
             for i in range(numBytes):
@@ -67,14 +60,11 @@ class SerialInterface(UpdateThread):
                         if len(self._readBuffer) < self._readDataSize:
                             self._readBuffer.append(b)
                         if len(self._readBuffer) == self._readDataSize:
+                            self._readStarted = False
                             encodedBytes = bytearray(self._readBuffer)
                             decodedBytes = base64.b64decode(encodedBytes)
                             #print(str(decodedBytes))
                             msg = json.loads(decodedBytes)
-                            self._readStarted = False
-                            self.eventMessageReceived(msg)
-
-    def eventMessageReceived(self, msg):
-        with self.callbackCv:
-            if callable(self.onMessageReceived):
-                self.onMessageReceived(msg)
+                            result.append(msg)
+        #print(str(result))                        
+        return result

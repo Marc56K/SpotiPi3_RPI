@@ -41,7 +41,7 @@ class UpdateThread(threading.Thread):
         #print("stopping " + self.name + "...")
         with self._shutdownLock:
             self._shutdown = True
-        with self.cv:            
+        with self.cv:
             self.cv.notify_all()
         self.join()
         #print(self.name + " stopped")
