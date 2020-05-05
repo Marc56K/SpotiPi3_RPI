@@ -61,6 +61,10 @@ class MainApp:
                         self.mpdClient.skipToStart()
                     elif k == "shutdown":
                         call("sudo shutdown 0", shell=True)
+                    elif k == "wifiSsid":
+                        self.inetMgr.setWifiSsid(v)
+                    elif k == "wifiKey":
+                        self.inetMgr.setWifiKey(v)
         except Exception as e:
             print(str(e))
 
@@ -68,7 +72,7 @@ class MainApp:
             self.lastStateUpdate = time.time()
             try:
                 dict = {}
-                dict["online"] = self.inetMgr.isConnected()
+                dict["online"] = self.inetMgr.isOnline()
                 dict.update(self.mpdClient.getStatus())
                 self.serialIf.write(dict)
             except Exception as e:
