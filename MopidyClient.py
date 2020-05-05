@@ -1,11 +1,12 @@
 from mpd import MPDClient
+from MopidyConfig import MopidyConfig
 import os.path
 import time
 import json
 import logging
 import threading
 
-class MopidyClient:
+class MopidyClient(MopidyConfig):
 
     def __init__(self):
         self._client = None
@@ -72,21 +73,22 @@ class MopidyClient:
             print(str(e))
 
     def loadPlaylist(self, id):
-        if self._currentPlaylistId == id:
+        if id != "" and self._currentPlaylistId == id and self._currentPlaylistName != "":
+            return
+        if id == "" and self._currentPlaylistId == id:
             return
         self._currentPlaylistId = id
         self._currentPlaylistName = ""
         try:
-            self.connect()
+            self.connect()  
             self._client.clear()
-            if self._currentPlaylistId == "":
-                return
-            playlists = self._client.listplaylists()
-            selectedPlaylist = next((p for p in playlists if p["playlist"].find(id) > -1), None)
-            if selectedPlaylist != None:
-                self._currentPlaylistName = selectedPlaylist["playlist"]
-                self._client.load(selectedPlaylist["playlist"])
-                self._client.play(0)
+            if self._currentPlaylistId != "":
+                playlists = self._client.listplaylists()
+                selectedPlaylist = next((p for p in playlists if p["playlist"].find(id) > -1), None)
+                if selectedPlaylist != None:
+                    self._currentPlaylistName = selectedPlaylist["playlist"]
+                    self._client.load(selectedPlaylist["playlist"])
+                    self._client.play(0)
         except Exception as e:
             print(str(e))
     

@@ -61,10 +61,20 @@ class MainApp:
                         self.mpdClient.skipToStart()
                     elif k == "shutdown":
                         call("sudo shutdown 0", shell=True)
+                    elif k == "reboot":
+                        call("sudo reboot 0", shell=True)
                     elif k == "wifiSsid":
                         self.inetMgr.setWifiSsid(v)
                     elif k == "wifiKey":
                         self.inetMgr.setWifiKey(v)
+                    elif k == "spotifyUser":
+                        self.mpdClient.setSpotifyUser(v)
+                    elif k == "spotifyPassword":
+                        self.mpdClient.setSpotifyPassword(v)
+                    elif k == "spotifyClientId":
+                        self.mpdClient.setSpotifyClientId(v)
+                    elif k == "spotifyClientSecret":
+                        self.mpdClient.setSpotifyClientSecret(v)
         except Exception as e:
             print(str(e))
 
