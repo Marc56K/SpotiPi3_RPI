@@ -1,4 +1,7 @@
 from subprocess import call
+from mpd import MPDClient
+import time
+import sys
 
 class MopidyConfig:
 
@@ -87,6 +90,24 @@ class MopidyConfig:
                         conf.write(line)
 
                 print("restarting mopidy")
-                call("sudo systemctl restart mopidy", shell=True)                
+                call("sudo systemctl restart mopidy", shell=True)
+                start = time.time()
+                completed = False
+                while time.time() - start < 60:
+                    try:
+                        client = MPDClient()
+                        client.timeout = 1
+                        client.idletimeout = None
+                        client.connect("localhost", 6600)
+                        completed = True
+                        break
+                    except:
+                        sys.stdout.write(".")
+                        sys.stdout.flush()
+                        time.sleep(1)
+                if completed:
+                    print(" done")
+                else:
+                    print(" timeout")
             except Exception as e:
                 print(str(e))
