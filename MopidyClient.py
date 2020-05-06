@@ -32,6 +32,33 @@ class MopidyClient(MopidyConfig):
             print(str(e))
         self._client = None
 
+    def getStatus(self):
+        result = {}
+        try:
+            self.connect()            
+
+            result["playlistId"] = self._currentPlaylistId
+            result["playlistName"] = self._currentPlaylistName
+
+            status = self._client.status()
+            
+            result["tracks"] = int(status["playlistlength"])
+            result["state"] = status["state"]
+
+            if "song" in status:
+                result["track"] = int(status["song"])
+                result["time"] = float(status["elapsed"])
+                curr = self._client.currentsong()
+                result["album"] = curr["album"]
+                result["artist"] = curr["artist"]
+                result["title"] = curr["title"]
+
+        except Exception as e:
+            print(str(e))
+            result["error"] = str(e)
+        return result
+ 
+
     def togglePlayPause(self):
         try:
             self.connect()
@@ -48,78 +75,54 @@ class MopidyClient(MopidyConfig):
     def skipToNextTrack(self, count):
         try:
             self.connect()
-            for _ in range(count):
-                if "nextsong" in self._client.status():
-                    self._client.next()
+            status = self._client.status()
+            if count > 0 and "nextsong" in status and "song" in status:
+                tracks = int(status["playlistlength"])
+                track = int(status["song"]) + count
+                track = min(track, tracks - 1)
+                self._client.play(track)
         except Exception as e:
             print(str(e))
 
     def skipToPreviousTrack(self, count):
         try:
             self.connect()
-            for _ in range(count):
-                status = self._client.status()
-                currentTrack = int(status.get("song", "-1"))
-                if currentTrack > 0:
-                    self._client.previous()
+            status = self._client.status()
+            currentTrack = int(status.get("song", "-1"))
+            if count > 0 and currentTrack > 0:
+                track = max(0, currentTrack - count)
+                self._client.play(track)
         except Exception as e:
             print(str(e))
 
     def skipToStart(self):
         try:
             self.connect()
-            self._client.play(0)
+            status = self._client.status()
+            if int(status["playlistlength"]) > 0:
+                self._client.play(0)
         except Exception as e:
             print(str(e))
 
     def loadPlaylist(self, id):
-        if id != "" and self._currentPlaylistId == id and self._currentPlaylistName != "":
+        if self._currentPlaylistId == id and (id == "" or self._currentPlaylistName != ""):
             return
-        if id == "" and self._currentPlaylistId == id:
-            return
+
         self._currentPlaylistId = id
+        prevPlaylistName = self._currentPlaylistName
         self._currentPlaylistName = ""
         try:
-            self.connect()  
-            self._client.clear()
-            if self._currentPlaylistId != "":
+            self.connect()
+            if prevPlaylistName != "":
+                self._client.clear()
+            if id != "":
                 playlists = self._client.listplaylists()
                 selectedPlaylist = next((p for p in playlists if p["playlist"].find(id) > -1), None)
                 if selectedPlaylist != None:
                     self._currentPlaylistName = selectedPlaylist["playlist"]
+                    self._client.clear()
                     self._client.load(selectedPlaylist["playlist"])
                     self._client.play(0)
         except Exception as e:
             print(str(e))
-    
-    def getStatus(self):
-        try:
-            self.connect()
-            result = {}
 
-            result["playlist"] = self._currentPlaylistName
-
-            stat = self._client.status()
-            
-            result["tracks"] = int(stat["playlistlength"])            
-            result["state"] = stat["state"]
-
-            if "song" in stat:
-                result["track"] = int(stat["song"])
-                result["time"] = float(stat["elapsed"])
-                curr = self._client.currentsong()
-                result["album"] = curr["album"]
-                result["artist"] = curr["artist"]
-                result["title"] = curr["title"]
-            else:
-                result["track"] = -1
-                result["time"] = 0
-                result["album"] = ""
-                result["artist"] = ""
-                result["title"] = ""       
-
-            return result
-        except Exception as e:
-            print(str(e))
-        return ""
- 
