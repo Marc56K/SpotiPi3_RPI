@@ -51,7 +51,7 @@ class MainApp:
         try:
             messages = self.serialIf.read()
             for msg in messages:
-                print(str(msg))
+                #print(str(msg))
                 for (k, v) in msg.items():
                     if k == "volume":
                         self.audioMgr.setAudioVolume(v)
