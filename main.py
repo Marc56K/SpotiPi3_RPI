@@ -10,6 +10,7 @@ import logging
 import os
 
 class MainApp:
+    hdmiActive = True
     shutdownRequested = False
     lastStateUpdate = 0
 
@@ -40,6 +41,11 @@ class MainApp:
 
         self.audioMgr.stop()
         self.inetMgr.stop()
+
+    def shutdownHdmi(self):
+        if self.inetMgr.isOnline() and self.hdmiActive:
+            self.hdmiActive = False
+            call("/usr/bin/tvservice -o", shell=True)        
 
     def loop(self):
         try:
@@ -89,6 +95,7 @@ class MainApp:
                 dict["online"] = self.inetMgr.isOnline()
                 dict.update(self.mpdClient.updateStatus())
                 self.serialIf.write(dict)
+                self.shutdownHdmi()
             except Exception as e:
                 print(str(e))
 
@@ -97,8 +104,7 @@ class MainApp:
 if __name__ == '__main__':
     try:
         os.nice(19)
-        time.sleep(5)
-        MainApp().run()        
+        MainApp().run()
     except Exception as e:
         print(str(e))
         exit(1)
