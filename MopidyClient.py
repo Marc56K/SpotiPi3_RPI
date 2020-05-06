@@ -10,7 +10,7 @@ class MopidyClient(MopidyConfig):
 
     def __init__(self):
         self._client = None
-        self._currentPlaylistId = None
+        self._currentPlaylistId = ""
         self._currentPlaylistName = ""
         self._stateFileContent = { 'playlistId': '', 'track': 0 }
         self.loadStateFile()
