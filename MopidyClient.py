@@ -58,6 +58,14 @@ class MopidyClient(MopidyConfig):
             result["error"] = str(e)
         return result
  
+    def stop(self):
+        try:
+            self.connect()
+            state = self._client.status()['state']
+            if state == 'play' or state == 'pause':
+                self._client.stop()
+        except Exception as e:
+            print(str(e))
 
     def togglePlayPause(self):
         try:
@@ -69,6 +77,17 @@ class MopidyClient(MopidyConfig):
                 self._client.pause(0)
             else:
                 self._client.play(0)
+        except Exception as e:
+            print(str(e))
+
+    def skipToTrack(self, track):
+        try:
+            self.connect()
+            status = self._client.status()
+            tracks = int(status["playlistlength"])
+            if tracks > 0:                
+                track = max(0, min(track, tracks - 1))
+                self._client.play(track)
         except Exception as e:
             print(str(e))
 

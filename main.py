@@ -51,6 +51,8 @@ class MainApp:
                         self.audioMgr.setAudioVolume(v)
                     elif k == "playlist":
                         self.mpdClient.loadPlaylist(v)
+                    elif k == "stop":
+                        self.mpdClient.stop()
                     elif k == "togglePlayPause":
                         self.mpdClient.togglePlayPause()
                     elif k == "skipPrevious":
@@ -59,6 +61,8 @@ class MainApp:
                         self.mpdClient.skipToNextTrack(v)
                     elif k == "skipToStart":
                         self.mpdClient.skipToStart()
+                    elif k == "skipTo":
+                        self.mpdClient.skipToTrack(v)
                     elif k == "shutdown":
                         call("sudo shutdown 0", shell=True)
                     elif k == "reboot":
