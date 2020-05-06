@@ -12,6 +12,8 @@ class MopidyClient(MopidyConfig):
         self._client = None
         self._currentPlaylistId = None
         self._currentPlaylistName = ""
+        self._stateFileContent = { 'playlistId': '', 'track': 0 }
+        self.loadStateFile()
 
     def connect(self):
         try:
@@ -32,7 +34,7 @@ class MopidyClient(MopidyConfig):
             print(str(e))
         self._client = None
 
-    def getStatus(self):
+    def updateStatus(self):
         result = {}
         try:
             self.connect()            
@@ -52,6 +54,7 @@ class MopidyClient(MopidyConfig):
                 result["album"] = curr["album"]
                 result["artist"] = curr["artist"]
                 result["title"] = curr["title"]
+                self.saveStateFile(self._currentPlaylistId, int(status["song"]))            
 
         except Exception as e:
             print(str(e))
@@ -141,7 +144,34 @@ class MopidyClient(MopidyConfig):
                     self._currentPlaylistName = selectedPlaylist["playlist"]
                     self._client.clear()
                     self._client.load(selectedPlaylist["playlist"])
-                    self._client.play(0)
+                    if self._stateFileContent.get("playlistId", "") == id:
+                        self._client.play(self._stateFileContent.get("track", 0))
+                    else:
+                        self._client.play(0)
         except Exception as e:
             print(str(e))
 
+    def loadStateFile(self):
+        for i in range(2):
+            fname = 'state{0}.json'.format(i)
+            try:
+                if os.path.isfile(fname):
+                    with open(fname, 'r') as f:
+                        self._stateFileContent = json.load(f)
+                        return
+            except Exception as e:
+                print(str(e))
+
+    def saveStateFile(self, playlistId, track):
+        if playlistId == "" or playlistId == None:
+            return
+        if playlistId != self._stateFileContent.get("playlistId", "") or track != self._stateFileContent.get("track", 0):
+            self._stateFileContent["playlistId"] = playlistId
+            self._stateFileContent["track"] = track
+            for i in range(2):
+                try:
+                    fname = 'state{0}.json'.format(i)
+                    with open(fname, 'w') as f:
+                        json.dump(self._stateFileContent, f)
+                except Exception as e:
+                    print(str(e))

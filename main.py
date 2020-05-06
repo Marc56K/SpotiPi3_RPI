@@ -87,7 +87,7 @@ class MainApp:
             try:
                 dict = {}
                 dict["online"] = self.inetMgr.isOnline()
-                dict.update(self.mpdClient.getStatus())
+                dict.update(self.mpdClient.updateStatus())
                 self.serialIf.write(dict)
             except Exception as e:
                 print(str(e))
