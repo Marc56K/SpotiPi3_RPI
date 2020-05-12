@@ -26,7 +26,7 @@ class SerialInterface:
             timeout = 1)
 
     def write(self, dict):
-        msg = json.dumps(dict)
+        msg = json.dumps(dict, ensure_ascii = False)
         encodedData = base64.b64encode(msg.encode("utf-8"))
         encodedDataSize = int(len(encodedData)).to_bytes(4, byteorder="little", signed=True)
         encodedHeader = base64.b64encode(encodedDataSize)
