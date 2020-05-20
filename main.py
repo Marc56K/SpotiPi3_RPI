@@ -70,8 +70,10 @@ class MainApp:
                     elif k == "skipTo":
                         self.mpdClient.skipToTrack(v)
                     elif k == "shutdown":
+                        self.mpdClient.stop()
                         call("sudo shutdown 0", shell=True)
                     elif k == "reboot":
+                        self.mpdClient.stop()
                         call("sudo reboot 0", shell=True)
                     elif k == "wifiSsid":
                         self.inetMgr.setWifiSsid(v)
