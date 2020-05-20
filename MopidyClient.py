@@ -49,12 +49,16 @@ class MopidyClient(MopidyConfig):
 
             if "song" in status:
                 result["track"] = int(status["song"])
-                result["time"] = float(status["elapsed"])
+                result["time"] = float(status["elapsed"])                
                 curr = self._client.currentsong()
+                result["duration"] = float(curr["time"]) 
                 result["album"] = curr["album"]
                 result["artist"] = curr["artist"]
                 result["title"] = curr["title"]
-                self.saveStateFile(self._currentPlaylistId, int(status["song"]))            
+                if (result["track"] == result["tracks"] - 1) and (result["duration"] - result["time"] < 5):
+                    self.saveStateFile(self._currentPlaylistId, 0)
+                else:
+                    self.saveStateFile(self._currentPlaylistId, int(status["song"]))            
 
         except Exception as e:
             print(str(e))
