@@ -1,11 +1,12 @@
 from UpdateThread import UpdateThread
+import time
 import logging
 import urllib.request
 from subprocess import call
 
 class InternetManager(UpdateThread):
 
-    _online = True
+    _online = False
 
     _wifiConfigFile = "/etc/wpa_supplicant/wpa_supplicant.conf"
 
@@ -69,9 +70,8 @@ class InternetManager(UpdateThread):
                     finally:
                         conf.close()
                     print("restarting wifi")
-                    call("sudo dhclient -r wlan0", shell=True)
-                    call("sudo ifconfig wlan0 down", shell=True)
-                    call("sudo ifconfig wlan0 up", shell=True)
+                    call("sudo wpa_cli -i wlan0 reconfigure", shell=True)
                     call("sudo dhclient -v wlan0", shell=True)
+                    print("done")
             except Exception as e:
                 print(str(e))
