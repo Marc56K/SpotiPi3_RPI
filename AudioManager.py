@@ -12,13 +12,15 @@ class AudioManager(UpdateThread):
     _volume = 0
     _maxVolume = 100
     _minVolume = 0
-    _cardIdx = 0
+    _speakerCardIdx = 0
+    _hjackCardIdx = 0
 
     def __init__(self):
         UpdateThread.__init__(self, "AUDIO-Thread")
         self.setSleepDuration(1)
         self._soundsDir = os.path.dirname(__file__) + "/sounds/"
-        self._cardIdx = audio.cards().index('wm8960soundcard')
+        self._speakerCardIdx = 0 # TODO
+        self._hjackCardIdx = audio.cards().index('Headphones')
         gpio.setmode(gpio.BCM)
         gpio.setup(4, gpio.IN)
 
@@ -39,10 +41,10 @@ class AudioManager(UpdateThread):
         return not gpio.input(4)
 
     def getSpeakerMixer(self):
-        return audio.Mixer('Speaker', cardindex = self._cardIdx)
+        return audio.Mixer('HiFiBerryDAC', cardindex = self._speakerCardIdx)
 
     def getHeadphoneMixer(self):
-        return audio.Mixer('Headphone', cardindex = self._cardIdx)
+        return audio.Mixer('Headphone', cardindex = self._hjackCardIdx)
 
     def playSound(self, fileName):
         try:

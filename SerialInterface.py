@@ -20,7 +20,7 @@ class SerialInterface:
         self._serial = serial.Serial(
             port = '/dev/serial0',
             baudrate = 115200,
-            parity = serial.PARITY_EVEN,
+            parity = serial.PARITY_NONE,
             stopbits = serial.STOPBITS_ONE,
             bytesize = serial.EIGHTBITS,
             timeout = 1)

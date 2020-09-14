@@ -1,19 +1,53 @@
 from mpd import MPDClient
 from MopidyConfig import MopidyConfig
+import RPi.GPIO as gpio
 import os.path
 import time
 import json
 import logging
 import threading
 
+RED = [True, False, False]
+GREEN = [False, True, False]
+BLUE = [False, False, True]
+YELLOW = [True, True, False]
+WHITE = [True, True, True]
+
 class MopidyClient(MopidyConfig):
+
+    _red_led = 25
+    _green_led = 23
+    _blue_led = 24
 
     def __init__(self):
         self._client = None
         self._currentPlaylistId = ""
         self._currentPlaylistName = ""
-        self._stateFileContent = { 'playlistId': '', 'track': 0 }
+        self._stateFileContent = { 'playlistId': '', 'track': 0 }        
+        self.initRgbLed()
         self.loadStateFile()
+
+    def initRgbLed(self):
+        gpio.setmode(gpio.BCM)
+        gpio.setup(self._red_led, gpio.OUT)        
+        gpio.setup(self._green_led, gpio.OUT)        
+        gpio.setup(self._blue_led, gpio.OUT)
+        gpio.output(self._red_led, gpio.LOW)
+        gpio.output(self._green_led, gpio.LOW)
+        gpio.output(self._blue_led, gpio.LOW)
+
+    def led_on(self, color):
+        if color[0]:
+            gpio.output(self._red_led, gpio.HIGH)
+        if color[1]:
+            gpio.output(self._green_led, gpio.HIGH)
+        if color[2]:
+            gpio.output(self._blue_led, gpio.HIGH)
+    
+    def led_off(self):
+        gpio.output(self._red_led, gpio.LOW)
+        gpio.output(self._green_led, gpio.LOW)
+        gpio.output(self._blue_led, gpio.LOW)
 
     def connect(self):
         try:
@@ -52,9 +86,9 @@ class MopidyClient(MopidyConfig):
                 result["time"] = float(status["elapsed"])                
                 curr = self._client.currentsong()
                 result["duration"] = float(curr["time"]) 
-                result["album"] = curr["album"]
-                result["artist"] = curr["artist"]
-                result["title"] = curr["title"]
+                result["album"] = curr.get("album", "")
+                result["artist"] = curr.get("artist", "")
+                result["title"] = curr.get("title", "")
                 if (result["track"] == result["tracks"] - 1) and (result["duration"] - result["time"] < 5):
                     self.saveStateFile(self._currentPlaylistId, 0)
                 else:
@@ -133,7 +167,7 @@ class MopidyClient(MopidyConfig):
     def loadPlaylist(self, id):
         if self._currentPlaylistId == id and (id == "" or self._currentPlaylistName != ""):
             return
-
+        newId = self._currentPlaylistId != id and self._currentPlaylistId != ""
         self._currentPlaylistId = id
         prevPlaylistName = self._currentPlaylistName
         self._currentPlaylistName = ""
@@ -145,6 +179,7 @@ class MopidyClient(MopidyConfig):
                 playlists = self._client.listplaylists()
                 selectedPlaylist = next((p for p in playlists if p["playlist"].find(id) > -1), None)
                 if selectedPlaylist != None:
+                    self.led_on(GREEN)
                     self._currentPlaylistName = selectedPlaylist["playlist"]
                     self._client.clear()
                     self._client.load(selectedPlaylist["playlist"])
@@ -152,8 +187,14 @@ class MopidyClient(MopidyConfig):
                         self._client.play(self._stateFileContent.get("track", 0))
                     else:
                         self._client.play(0)
+                elif newId:
+                    self.led_on(YELLOW)
         except Exception as e:
             print(str(e))
+            self.led_on(RED)
+
+        time.sleep(1)    
+        self.led_off()
 
     def loadStateFile(self):
         for i in range(2):
