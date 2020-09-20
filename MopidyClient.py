@@ -74,7 +74,7 @@ class MopidyClient(MopidyConfig):
             self.connect()            
 
             result["playlistId"] = self._currentPlaylistId
-            result["playlistName"] = self._currentPlaylistName
+            result["playlistName"] = self._currentPlaylistName.replace("[USB] ", "")
 
             status = self._client.status()
             

@@ -1,6 +1,7 @@
 from MopidyClient import MopidyClient
 from InternetManager import InternetManager
 from AudioManager import AudioManager
+from UsbManager import UsbManager
 from SerialInterface import SerialInterface
 from subprocess import call
 import threading
@@ -16,6 +17,7 @@ class MainApp:
 
     inetMgr = InternetManager()
     audioMgr = AudioManager()
+    usbManager = UsbManager()
     mpdClient = MopidyClient()
     serialIf = SerialInterface()
 
@@ -29,6 +31,7 @@ class MainApp:
         signal.signal(signal.SIGINT, self.handleShutdownRequest)
         signal.signal(signal.SIGTERM, self.handleShutdownRequest)
 
+        self.usbManager.start()
         self.inetMgr.start()
         self.audioMgr.start()
 
@@ -41,6 +44,7 @@ class MainApp:
 
         self.audioMgr.stop()
         self.inetMgr.stop()
+        self.usbManager.stop()
 
     def shutdownHdmi(self):
         if self.inetMgr.isOnline() and self.hdmiActive:
