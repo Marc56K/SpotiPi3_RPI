@@ -86,9 +86,9 @@ class MopidyClient(MopidyConfig):
                 result["time"] = float(status["elapsed"])                
                 curr = self._client.currentsong()
                 result["duration"] = float(curr["time"]) 
-                result["album"] = curr.get("album", "")
-                result["artist"] = curr.get("artist", "")
-                result["title"] = curr.get("title", "")
+                result["album"] = curr.get("album", "").strip()
+                result["artist"] = curr.get("artist", "").strip()
+                result["title"] = curr.get("title", "").strip()
                 if (result["track"] == result["tracks"] - 1) and (result["duration"] - result["time"] < 5):
                     self.saveStateFile(self._currentPlaylistId, 0)
                 else:
@@ -188,10 +188,10 @@ class MopidyClient(MopidyConfig):
                     else:
                         self._client.play(0)
                 elif newId:
-                    self.led_on(YELLOW)
+                    self.led_on(RED)
         except Exception as e:
             print(str(e))
-            self.led_on(RED)
+            self.led_on(YELLOW)
 
         time.sleep(1)    
         self.led_off()
