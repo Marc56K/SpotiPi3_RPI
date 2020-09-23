@@ -46,7 +46,8 @@ class UsbManager(UpdateThread):
         result = []
         for root, _, files in os.walk(dirPath):
             for fileName in files:
-                if fileName.lower().endswith(".mp3"):
+                fn = fileName.lower()
+                if fn.endswith(".mp3") or fn.endswith(".wav") or fn.endswith(".ac3") or fn.endswith(".flac") or fn.endswith(".ogg") or fn.endswith(".opus"):
                     filePath = os.path.join(root, fileName)
                     result.append(filePath)
         result.sort()
