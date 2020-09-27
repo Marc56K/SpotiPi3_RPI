@@ -245,11 +245,12 @@ class MopidyClient(MopidyConfig):
         if playlistId == "" or playlistId == None:
             return
         trackChanged = playlistId != self._stateFileContent.get("playlistId", "") or track != self._stateFileContent.get("track", 0)
+        timeChanged = time != self._stateFileContent["time"]
         if trackChanged or int(time) % 5 == 0:
             self._stateFileContent["playlistId"] = playlistId
             self._stateFileContent["track"] = track
             self._stateFileContent["time"] = time
-        if trackChanged or int(time) % 60 == 0:
+        if trackChanged or (timeChanged and int(time) % 60 == 0):
             self.saveStateFile()
 
     def saveStateFile(self):
