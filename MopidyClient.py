@@ -57,7 +57,7 @@ class MopidyClient(MopidyConfig):
                 self._client.idletimeout = None
                 self._client.connect("localhost", 6600)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR1: " + str(e))
 
     def disconnect(self):
         try:
@@ -65,7 +65,7 @@ class MopidyClient(MopidyConfig):
                 self._client.close()
                 self._client.disconnect()
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR2: " + str(e))
         self._client = None
 
     def updateStatus(self):
@@ -83,19 +83,19 @@ class MopidyClient(MopidyConfig):
 
             if "song" in status:
                 result["track"] = int(status["song"])
-                result["time"] = float(status["elapsed"])                
+                result["time"] = float(status.get('elapsed', 0.0))                
                 curr = self._client.currentsong()
                 result["duration"] = float(curr["time"]) 
                 result["album"] = curr.get("album", "").strip()
                 result["artist"] = curr.get("artist", "").strip()
                 result["title"] = curr.get("title", "").strip()
                 if (result["track"] == result["tracks"] - 1) and (result["duration"] - result["time"] < 5):
-                    self.saveStateFile(self._currentPlaylistId, 0, 0)
+                    self.updateStateFileContent(self._currentPlaylistId, 0, 0)
                 else:
-                    self.saveStateFile(self._currentPlaylistId, int(status["song"]), float(status["elapsed"]))            
+                    self.updateStateFileContent(self._currentPlaylistId, int(status["song"]), float(status.get('elapsed', 0.0)))            
 
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR3: " + str(e))
             result["error"] = str(e)
         return result
  
@@ -106,7 +106,7 @@ class MopidyClient(MopidyConfig):
             if state == 'play' or state == 'pause':
                 self._client.stop()
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR4: " + str(e))
 
     def togglePlayPause(self):
         try:
@@ -119,7 +119,7 @@ class MopidyClient(MopidyConfig):
             else:
                 self._client.play(0)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR5: " + str(e))
 
     def skipToTrack(self, track):
         try:
@@ -130,30 +130,38 @@ class MopidyClient(MopidyConfig):
                 track = max(0, min(track, tracks - 1))
                 self._client.play(track)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR6: " + str(e))
 
     def skipToNextTrack(self, count):
         try:
+            if count <= 0:
+                return
             self.connect()
             status = self._client.status()
-            if count > 0 and "nextsong" in status and "song" in status:
+            if "nextsong" in status and "song" in status:
                 tracks = int(status["playlistlength"])
                 track = int(status["song"]) + count
                 track = min(track, tracks - 1)
                 self._client.play(track)
+            else:
+                self.seek(count * 60)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR7: " + str(e))
 
     def skipToPreviousTrack(self, count):
         try:
+            if count <= 0:
+                return
             self.connect()
             status = self._client.status()
             currentTrack = int(status.get("song", "-1"))
-            if count > 0 and currentTrack > 0:
+            if currentTrack > 0:
                 track = max(0, currentTrack - count)
                 self._client.play(track)
+            else:
+                self.seek(count * -60)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR8: " + str(e))
 
     def skipToStart(self):
         try:
@@ -162,10 +170,11 @@ class MopidyClient(MopidyConfig):
             if int(status["playlistlength"]) > 0:
                 self._client.play(0)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR9: " + str(e))
 
     def seek(self, deltaInSeconds):
         try:
+            self.connect()
             if self._client.status()['state'] == 'stop':
                 return
             if deltaInSeconds > 0:
@@ -173,7 +182,7 @@ class MopidyClient(MopidyConfig):
                 if "nextsong" not in status:
                     currentTrack = int(status.get("song", "-1"))
                     if currentTrack > -1:
-                        currentTrackTime = int(round(float(status['elapsed'])))
+                        currentTrackTime = int(round(float(status.get('elapsed', 0.0))))
                         currentTrackDuration = int(self._client.playlistinfo()[currentTrack]['time'])
                         if currentTrackTime + deltaInSeconds >= currentTrackDuration - 1:
                             return
@@ -181,7 +190,7 @@ class MopidyClient(MopidyConfig):
             else:
                 self._client.seekcur(str(deltaInSeconds))
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR10: " + str(e))
 
     def loadPlaylist(self, id):
         if self._currentPlaylistId == id and (id == "" or self._currentPlaylistName != ""):
@@ -206,14 +215,16 @@ class MopidyClient(MopidyConfig):
                         track = self._stateFileContent.get("track", 0)
                         self._client.play(track)
                         if float(self._stateFileContent.get("time", 0)) > 5:
-                            time.sleep(0.1) #hack
+                            self._client.pause(1)
+                            time.sleep(1) #hack
                             self._client.seek(track, str(self._stateFileContent.get("time", 0)))
+                            self._client.pause(0)
                     else:
                         self._client.play(0)
                 elif newId:
                     self.led_on(RED)
         except Exception as e:
-            print("ERROR: " + str(e))
+            print("ERROR11: " + str(e))
             self.led_on(YELLOW)
 
         time.sleep(1)    
@@ -228,21 +239,24 @@ class MopidyClient(MopidyConfig):
                         self._stateFileContent = json.load(f)
                         return
             except Exception as e:
-                print("ERROR: " + str(e))
+                print("ERROR12: " + str(e))
 
-    def saveStateFile(self, playlistId, track, time):
+    def updateStateFileContent(self, playlistId, track, time):
         if playlistId == "" or playlistId == None:
             return
-        old = self._stateFileContent
-        if playlistId != old.get("playlistId", "") or track != old.get("track", 0) or (int(round(time)) % 30 == 0 and old.get("time", 0.0) != round(time)):
+        trackChanged = playlistId != self._stateFileContent.get("playlistId", "") or track != self._stateFileContent.get("track", 0)
+        if trackChanged or int(time) % 5 == 0:
             self._stateFileContent["playlistId"] = playlistId
             self._stateFileContent["track"] = track
             self._stateFileContent["time"] = time
-            print(str(self._stateFileContent))
-            for i in range(2):
-                try:
-                    fname = 'state{0}.json'.format(i)
-                    with open(fname, 'w') as f:
-                        json.dump(self._stateFileContent, f)
-                except Exception as e:
-                    print("ERROR: " + str(e))
+        if trackChanged:
+            self.saveStateFile()
+
+    def saveStateFile(self):
+        for i in range(2):
+            try:
+                fname = 'state{0}.json'.format(i)
+                with open(fname, 'w') as f:
+                    json.dump(self._stateFileContent, f)
+            except Exception as e:
+                print("ERROR13: " + str(e))

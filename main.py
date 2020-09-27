@@ -13,6 +13,7 @@ import os
 class MainApp:
     hdmiActive = True
     shutdownRequested = False
+    shutdownShellCmd = ""
     lastStateUpdate = 0
 
     inetMgr = InternetManager()
@@ -24,8 +25,12 @@ class MainApp:
     def __init__(self):
         pass
 
-    def handleShutdownRequest(self, signal, frame):
+    def requestShutdown(self, shellCmd):
         self.shutdownRequested = True
+        self.shutdownShellCmd = shellCmd
+
+    def handleShutdownRequest(self, signal, frame):
+        self.requestShutdown("")
 
     def run(self):
         signal.signal(signal.SIGINT, self.handleShutdownRequest)
@@ -42,9 +47,15 @@ class MainApp:
             delta = end - start 
             time.sleep(max(0, 0.3 - delta))
 
+        self.mpdClient.saveStateFile()
+        self.mpdClient.stop()
+
         self.audioMgr.stop()
         self.inetMgr.stop()
         self.usbManager.stop()
+
+        if self.shutdownShellCmd != "":
+            call(self.shutdownShellCmd, shell=True)
 
     def shutdownHdmi(self):
         if self.inetMgr.isOnline() and self.hdmiActive:
@@ -76,11 +87,9 @@ class MainApp:
                     elif k == "seek":
                         self.mpdClient.seek(v)
                     elif k == "shutdown":
-                        self.mpdClient.stop()
-                        call("sudo shutdown 0", shell=True)
+                        self.requestShutdown("sudo shutdown 0")
                     elif k == "reboot":
-                        self.mpdClient.stop()
-                        call("sudo reboot 0", shell=True)
+                        self.requestShutdown("sudo reboot 0")
                     elif k == "wifiSsid":
                         self.inetMgr.setWifiSsid(v)
                     elif k == "wifiKey":
@@ -96,7 +105,7 @@ class MainApp:
         except Exception as e:
             print(str(e))
 
-        if time.time() - self.lastStateUpdate > 0.9:
+        if time.time() - self.lastStateUpdate > 0.99:
             self.lastStateUpdate = time.time()
             try:
                 dict = {}
