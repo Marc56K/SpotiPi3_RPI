@@ -233,7 +233,7 @@ class MopidyClient(MopidyConfig):
         if playlistId == "" or playlistId == None:
             return
         old = self._stateFileContent
-        if playlistId != old.get("playlistId", "") or track != old.get("track", 0) or int(round(time)) % 30 == 0:
+        if playlistId != old.get("playlistId", "") or track != old.get("track", 0) or (int(round(time)) % 30 == 0 and old.get("time", 0.0) != round(time)):
             self._stateFileContent["playlistId"] = playlistId
             self._stateFileContent["track"] = track
             self._stateFileContent["time"] = time
