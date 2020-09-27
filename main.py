@@ -105,7 +105,7 @@ class MainApp:
         except Exception as e:
             print(str(e))
 
-        if time.time() - self.lastStateUpdate > 0.99:
+        if time.time() - self.lastStateUpdate > 0.66:
             self.lastStateUpdate = time.time()
             try:
                 dict = {}
