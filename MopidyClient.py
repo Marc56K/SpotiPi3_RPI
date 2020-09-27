@@ -249,7 +249,7 @@ class MopidyClient(MopidyConfig):
             self._stateFileContent["playlistId"] = playlistId
             self._stateFileContent["track"] = track
             self._stateFileContent["time"] = time
-        if trackChanged:
+        if trackChanged or int(time) % 60 == 0:
             self.saveStateFile()
 
     def saveStateFile(self):
