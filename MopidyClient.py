@@ -205,8 +205,9 @@ class MopidyClient(MopidyConfig):
                     if self._stateFileContent.get("playlistId", "") == id:
                         track = self._stateFileContent.get("track", 0)
                         self._client.play(track)
-                        time.sleep(0.1) #hack
-                        self._client.seek(track, str(self._stateFileContent.get("time", 0)))
+                        if float(self._stateFileContent.get("time", 0)) > 5:
+                            time.sleep(0.1) #hack
+                            self._client.seek(track, str(self._stateFileContent.get("time", 0)))
                     else:
                         self._client.play(0)
                 elif newId:
