@@ -164,6 +164,25 @@ class MopidyClient(MopidyConfig):
         except Exception as e:
             print("ERROR: " + str(e))
 
+    def seek(self, deltaInSeconds):
+        try:
+            if self._client.status()['state'] == 'stop':
+                return
+            if deltaInSeconds > 0:
+                status = self._client.status()
+                if "nextsong" not in status:
+                    currentTrack = int(status.get("song", "-1"))
+                    if currentTrack > -1:
+                        currentTrackTime = int(round(float(status['elapsed'])))
+                        currentTrackDuration = int(self._client.playlistinfo()[currentTrack]['time'])
+                        if currentTrackTime + deltaInSeconds >= currentTrackDuration - 1:
+                            return
+                self._client.seekcur("+" + str(deltaInSeconds))
+            else:
+                self._client.seekcur(str(deltaInSeconds))
+        except Exception as e:
+            print("ERROR: " + str(e))
+
     def loadPlaylist(self, id):
         if self._currentPlaylistId == id and (id == "" or self._currentPlaylistName != ""):
             return
@@ -214,8 +233,7 @@ class MopidyClient(MopidyConfig):
         if playlistId == "" or playlistId == None:
             return
         old = self._stateFileContent
-        deltaTime = abs(float(old.get("time", 0)) - time)
-        if playlistId != old.get("playlistId", "") or track != old.get("track", 0) or deltaTime > 30.0:
+        if playlistId != old.get("playlistId", "") or track != old.get("track", 0) or int(round(time)) % 30 == 0:
             self._stateFileContent["playlistId"] = playlistId
             self._stateFileContent["track"] = track
             self._stateFileContent["time"] = time

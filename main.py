@@ -73,6 +73,8 @@ class MainApp:
                         self.mpdClient.skipToStart()
                     elif k == "skipTo":
                         self.mpdClient.skipToTrack(v)
+                    elif k == "seek":
+                        self.mpdClient.seek(v)
                     elif k == "shutdown":
                         self.mpdClient.stop()
                         call("sudo shutdown 0", shell=True)
